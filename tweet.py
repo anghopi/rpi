@@ -1,21 +1,24 @@
 from requests_oauthlib import OAuth1Session
 import os
 import json
-    def tweet():
-    # In your terminal please set your environment variables by running the following lines of code.
-    access_token = 'YOUR ACCESS TOKEN SECRET'
-    access_token_secret = 'YOUR ACCESS TOKEN'
+import time
+from datetime import datetime
+
+def tweet():
+
+    access_token = 'YOUR_ACCESS_TOKEN'
+    access_token_secret = 'YOUR_ACCESS_TOKEN_SECRET'
 
     consumer_key = "YOUR_CONSUMER_KEY"
-    consumer_secret = "YOUR_CONSUMER_SECRET"
+    consumer_secret = "YOUR_CONSUMER_KEY_SECRET"
 
-    # Be sure to add replace the text of the with the text you wish to Tweet. You can also add parameters to post polls, quote Tweets, Tweet with reply settings, and Tweet to Super Followers in addition to other features.
-    payload = {"text": "WATER! HELP"}
+    # Be sure to add replace the text of the with the text you wish to Tweet
+    payload = {"text": "There is a water leak in the basement! Please delete the post when you see it. If you don't do so in 30 min, you'll be notified again."}
 
-    # Get request token
-    request_token_url = "https://api.twitter.com/oauth/request_token?oauth_callback=oob&x_auth_access_type=write"
-    oauth = OAuth1Session(consumer_key, client_secret=consumer_secret)
-    #
+    now = datetime.now()
+    time1 = now.strftime("%H:%M:%S")
+    payload["text"] += " Time: " + time1
+
     # Make the request
     oauth = OAuth1Session(
         consumer_key,
@@ -31,13 +34,38 @@ import json
     )
 
     if response.status_code != 201:
-        raise Exception(
-            "Request returned an error: {} {}".format(response.status_code, response.text)
+        raise Exception("Request returned an error: {} {}".format(response.status_code, response.text))
+
+
+    # Saving the response as JSON
+    json_response = response.json()
+    tweet_already_exists = len(json_response["data"]) > 0
+
+    # if the first post is not deleted after 30 min, then post a second one
+    # feel free to change the time from 30 min to something else
+    if tweet_already_exists:
+        print("The first tweet already exists")
+        print("Waiting for 30 minutes before posting the second tweet.")
+        time.sleep(int(1*60))
+
+        new_text = "Warning: Your second reminder about the leak in the basement! Please, delete the post once you see it."
+        payload = {"text": new_text}
+
+        response = oauth.post(
+            "https://api.twitter.com/2/tweets",
+            json=payload,
         )
 
-    print("Response code: {}".format(response.status_code))
+        if response.status_code != 201:
+            raise Exception("Request returned an error: {} {}".format(response.status_code, response.text))
 
-    # # Saving the response as JSON
+        print("Second tweet posted successfully!")
+    else:
+        print("First tweet posted successfully!")
+        print("Response code: {}".format(response.status_code))
+
+    # Saving the response as JSON
     json_response = response.json()
     print(json.dumps(json_response, indent=4, sort_keys=True))
+
 tweet()
